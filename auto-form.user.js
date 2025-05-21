@@ -3,9 +3,11 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  自动填充网页表单，支持随机生成内容，兼容主流UI框架
-// @author       AutoForm
+// @author       twelve
 // @match        *://*/*
 // @grant        GM_addStyle
+// @downloadURL  https://github.com/twelve-web/auto-form/master/auto-form.user.js
+// @updateURL    https://github.com/twelve-web/auto-form/master/auto-form.user.js
 // ==/UserScript==
 
 (function() {
