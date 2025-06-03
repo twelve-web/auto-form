@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>实时收入计算器</title>
+    <style>
+      :root {
+        --primary-color: #7c3aed;
+        --gradient-start: #7c3aed;
+        --gradient-end: #c026d3;
+        --card-bg: rgba(30, 27, 75, 0.8);
+        --text-color: #f8f9fa;
+        --input-bg: rgba(255, 255, 255, 0.08);
+        --error-color: #ff6b81;
+        --success-color: #34d399;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "SF Pro Display", "Segoe UI", Tahoma, Geneva, Verdana,
+          sans-serif;
+      }
+
+      body {
+        background: linear-gradient(
+          135deg,
+          var(--gradient-start),
+          var(--gradient-end)
+        );
+        color: var(--text-color);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        position: relative;
+      }
+
+      body::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        z-index: -1;
+      }
+
+      .container {
+        width: 95%;
+        max-width: 480px;
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 20px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s ease;
+      }
+
+      .glow {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(
+          circle at center,
+          rgba(124, 58, 237, 0.2) 0%,
+          transparent 70%
+        );
+        opacity: 0.5;
+        z-index: -1;
+        pointer-events: none;
+      }
+
+      h1 {
+        text-align: center;
+        font-size: 24px;
+        font-weight: 700;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--gradient-end)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 10px;
+      }
+
+      .section {
+        transition: all 0.5s ease;
+      }
+
+      .input-section {
+        opacity: 1;
+        transform: translateY(0);
+        height: auto;
+        overflow: hidden;
+        transition: all 0.5s ease;
+      }
+
+      .input-section.hide {
+        opacity: 0;
+        transform: translateY(-20px);
+        height: 0;
+        padding: 0;
+        margin: 0;
+      }
+
+      .result-section {
+        opacity: 0;
+        transform: translateY(20px);
+        height: 0;
+        overflow: hidden;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 25px;
+        transition: all 0.5s ease;
+      }
+
+      .result-section.show {
+        opacity: 1;
+        transform: translateY(0);
+        height: auto;
+        position: relative;
+      }
+
+      /* 输入表单样式 */
+      .input-group {
+        margin-bottom: 18px;
+        position: relative;
+      }
+
+      .two-columns {
+        grid-column: span 2;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      input {
+        width: 100%;
+        padding: 8px 10px;
+        background: var(--input-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: var(--text-color);
+        font-size: 14px;
+        outline: none;
+      }
+
+      input:focus {
+        border-color: var(--gradient-end);
+      }
+
+      input[type="time"] {
+        color-scheme: dark;
+      }
+
+      button {
+        grid-column: span 2;
+        padding: 10px;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--gradient-end)
+        );
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 5px;
+        transition: all 0.2s ease;
+      }
+
+      button:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .result-preview {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        text-align: center;
+      }
+
+      .preview-icon {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 15px;
+        opacity: 0.6;
+      }
+
+      .preview-text {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 14px;
+        max-width: 80%;
+        line-height: 1.5;
+      }
+
+      .control-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .control-buttons button {
+        margin-top: 0;
+        flex: 1;
+        padding: 8px;
+        font-size: 14px;
+      }
+
+      .back-btn {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      .stop-btn {
+        background: linear-gradient(90deg, #e74c3c, #c0392b);
+      }
+
+      .error {
+        color: #ff6b81;
+        font-size: 11px;
+        margin-top: 2px;
+        display: none;
+      }
+
+      .error.show {
+        display: block;
+      }
+
+      .live-counter {
+        text-align: center;
+        position: relative;
+        padding-top: 15px;
+      }
+
+      .live-counter.active {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        animation: fadeIn 0.5s ease-out;
+      }
+
+      .live-counter.private .live-counter-value,
+      .live-counter.private .additional-info,
+      .live-counter.private .result-info {
+        filter: blur(15px) opacity(0.5);
+        transition: filter 0.3s ease;
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .live-counter.private .masked-view {
+        display: block;
+        font-size: 16px;
+        font-weight: bold;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 15px 30px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      }
+
+      .masked-view {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px 20px;
+        border-radius: 20px;
+        color: white;
+        font-weight: bold;
+        z-index: 10;
+        cursor: pointer;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .live-counter-label {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 8px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+
+      .live-counter-value {
+        font-size: 42px;
+        font-weight: 700;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--gradient-end)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 10px 0;
+        position: relative;
+      }
+
+      .current-session {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin: 15px 0;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .session-info {
+        font-weight: 600;
+        color: var(--gradient-end);
+      }
+
+      .working-time {
+        font-family: monospace;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+
+      .result-container {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.3s ease;
+        display: none;
+        height: 100%;
+        margin-top: 20px;
+      }
+
+      .result-container.show {
+        opacity: 1;
+        transform: translateY(0);
+        display: block;
+      }
+
+      .result-value {
+        font-size: 24px;
+        font-weight: 700;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--gradient-end)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 5px 0;
+      }
+
+      .result-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 3px;
+      }
+
+      .additional-info {
+        font-size: 13px;
+        margin: 15px 0;
+        color: rgba(255, 255, 255, 0.8);
+        line-height: 1.6;
+        background: rgba(0, 0, 0, 0.15);
+        padding: 10px;
+        border-radius: 8px;
+      }
+
+      .money-rain {
+        position: fixed;
+        top: -100px;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        z-index: -1;
+        pointer-events: none;
+        display: none;
+      }
+
+      .money-rain.active {
+        display: block;
+      }
+
+      .coin {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23fbbf24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z"/></svg>')
+          center/contain no-repeat;
+        animation: fall 3s linear forwards;
+        opacity: 0.9;
+      }
+
+      @keyframes fall {
+        0% {
+          transform: translateY(0) rotate(0deg);
+          opacity: 0;
+        }
+        10% {
+          opacity: 0.9;
+        }
+        100% {
+          transform: translateY(calc(100vh + 100px)) rotate(360deg);
+          opacity: 0.6;
+        }
+      }
+
+      .privacy-lock {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 30px;
+        height: 30px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+      }
+
+      .privacy-lock svg {
+        width: 16px;
+        height: 16px;
+        fill: rgba(255, 255, 255, 0.7);
+      }
+
+      .password-dialog {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        backdrop-filter: blur(5px);
+        border-radius: 16px;
+      }
+
+      .password-dialog.active {
+        display: flex;
+      }
+
+      .password-form {
+        width: 80%;
+        max-width: 300px;
+        padding: 20px;
+        background: var(--card-bg);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .password-form input {
+        padding: 10px;
+        border-radius: 6px;
+      }
+
+      .password-buttons {
+        display: flex;
+        gap: 10px;
+      }
+
+      .password-buttons button {
+        flex: 1;
+        margin: 0;
+      }
+
+      .cancel-btn {
+        background: rgba(0, 0, 0, 0.3);
+      }
+
+      .blur-content {
+        filter: blur(8px);
+      }
+
+      .masked-content {
+        font-family: monospace;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 15px;
+        }
+
+        h1 {
+          font-size: 20px;
+        }
+
+        .result-section {
+          grid-row: 1;
+        }
+
+        .input-section {
+          grid-row: 2;
+        }
+      }
+
+      .result-info {
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .result-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        background: rgba(0, 0, 0, 0.15);
+        padding: 10px 15px;
+        border-radius: 8px;
+      }
+
+      .result-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .result-row .result-label {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.8);
+        text-align: left;
+      }
+
+      .result-row .result-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--gradient-end);
+      }
+
+      /* 炫酷动画效果 */
+      .pulse {
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      /* 炫酷背景效果 */
+      .particle-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        pointer-events: none;
+      }
+
+      .particle {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        pointer-events: none;
+      }
+
+      /* 荧光闪烁效果 */
+      .glow-effect {
+        text-shadow: 0 0 5px rgba(124, 58, 237, 0.7),
+          0 0 10px rgba(124, 58, 237, 0.5), 0 0 15px rgba(124, 58, 237, 0.3);
+        animation: glow 3s infinite alternate;
+      }
+
+      @keyframes glow {
+        0% {
+          filter: brightness(1);
+        }
+        100% {
+          filter: brightness(1.3);
+        }
+      }
+
+      @keyframes scoreIncrease {
+        0% {
+          transform: translate(-50%, 0) scale(1);
+          opacity: 0;
+        }
+        20% {
+          transform: translate(-50%, -20px) scale(1.2);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -40px) scale(1);
+          opacity: 0;
+        }
+      }
+
+      .score-animation {
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        transform: translateX(-50%);
+        color: var(--gradient-end);
+        font-weight: bold;
+        font-size: 18px;
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        animation: scoreIncrease 1.2s forwards;
+        z-index: 10;
+      }
+
+      /* 下班提醒样式 */
+      .work-end-notice {
+        background: linear-gradient(90deg, #ff9966, #ff5e62);
+        color: white;
+        padding: 12px 15px;
+        border-radius: 10px;
+        margin-top: 15px;
+        font-weight: 500;
+        text-align: center;
+        animation: pulse 2s infinite;
+        box-shadow: 0 5px 15px rgba(255, 94, 98, 0.3);
+        display: none;
+      }
+
+      .work-end-notice.show {
+        display: block;
+      }
+
+      .work-end-notice span {
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container" id="mainContainer">
+      <div class="glow"></div>
+      <h1>每日收入计算器</h1>
+
+      <div class="input-section section" id="inputSection">
+        <div class="input-group">
+          <label for="startTime">开始工作时间</label>
+          <input type="time" id="startTime" required />
+          <div class="error" id="startTimeError">请输入开始时间</div>
+        </div>
+
+        <div class="input-group">
+          <label for="endTime">结束工作时间</label>
+          <input type="time" id="endTime" required />
+          <div class="error" id="endTimeError">请输入结束时间</div>
+        </div>
+
+        <div class="input-group">
+          <label for="monthlySalary">月薪（元/月）</label>
+          <input
+            type="password"
+            id="monthlySalary"
+            min="0"
+            step="100"
+            placeholder="请输入您的月薪"
+            required
+          />
+          <div class="error" id="monthlySalaryError">请输入有效的月薪</div>
+        </div>
+
+        <div class="input-group">
+          <label for="workdaysPerMonth">每月工作天数</label>
+          <input
+            type="number"
+            id="workdaysPerMonth"
+            min="1"
+            max="31"
+            value="22"
+            required
+          />
+          <div class="error" id="workdaysError">请输入1-31之间的数值</div>
+        </div>
+
+        <button id="calculateBtn">计算收入</button>
+      </div>
+
+      <div class="result-section section" id="resultSection">
+        <!-- 实时收入计数器 -->
+        <div class="live-counter" id="liveCounter">
+          <div class="privacy-lock" id="privacyToggle">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"
+              />
+            </svg>
+          </div>
+
+          <div class="masked-view">点击解锁查看</div>
+
+          <div class="live-counter-label">实时累计收入</div>
+          <div class="live-counter-value" id="liveIncome">¥0.00</div>
+
+          <div class="current-session">
+            <span>从</span>
+            <span class="session-info" id="sessionStart">--:--</span>
+            <span>开始</span>
+            <span class="working-time" id="workingTime">00:00:00</span>
+          </div>
+
+          <div class="additional-info" id="additionalInfo">
+            时薪约为 ¥0.00<br />
+            平均每分钟赚取约 ¥0.00
+          </div>
+
+          <div class="work-end-notice" id="workEndNotice">
+            <span>下班时间到了!</span><br />
+            今天辛苦了，累计收入已停止增长
+          </div>
+
+          <div class="result-info" id="resultInfo">
+            <div class="result-row">
+              <div class="result-label">今日工作时长</div>
+              <div class="result-value" id="hoursWorked">0小时</div>
+            </div>
+
+            <div class="result-row">
+              <div class="result-label">今日总收入</div>
+              <div class="result-value" id="totalIncome">¥0.00</div>
+            </div>
+          </div>
+
+          <div class="control-buttons">
+            <button class="back-btn" id="backBtn">返回</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="money-rain" id="moneyRain"></div>
+
+    <!-- 密码设置对话框 -->
+    <div class="password-dialog" id="passwordDialog">
+      <div class="password-form">
+        <h3>设置锁屏密码</h3>
+        <input type="password" id="passwordInput" placeholder="请输入密码" />
+        <div class="password-buttons">
+          <button class="cancel-btn" id="cancelPasswordBtn">取消</button>
+          <button id="confirmPasswordBtn">确定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 密码验证对话框 -->
+    <div class="password-dialog" id="unlockDialog">
+      <div class="password-form">
+        <h3>请输入密码解锁</h3>
+        <input
+          type="password"
+          id="unlockPasswordInput"
+          placeholder="请输入密码"
+        />
+        <div
+          id="wrongPasswordError"
+          style="
+            color: #ff6b81;
+            display: none;
+            font-size: 12px;
+            margin-top: 5px;
+          "
+        >
+          密码错误
+        </div>
+        <div class="password-buttons">
+          <button class="cancel-btn" id="cancelUnlockBtn">取消</button>
+          <button id="verifyPasswordBtn">解锁</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 全局变量
+      let timerStartTime = null;
+      let timerInterval = null;
+      let isPaused = false;
+      let hourlyIncome = 0;
+      let previousTime = 0;
+      let isTimerRunning = false;
+      let elapsedSeconds = 0;
+      let realTimeRate = 0;
+      let passwordIsSet = false;
+      let workEndTime = null;
+      let isWorkEnded = false;
+
+      // 页面加载时执行
+      document.addEventListener("DOMContentLoaded", function () {
+        // 检查是否有本地保存的值
+        loadValuesFromLocalStorage();
+
+        // 创建背景粒子效果
+        createParticles();
+
+        // 添加粒子动画效果
+        animateGlowElements();
+
+        // 如果已经设置了密码，则自动加密显示
+        if (passwordIsSet) {
+          document.querySelector(".live-counter").classList.add("private");
+        }
+
+        // 绑定所有事件处理器
+        initEventHandlers();
+
+        // 页面可见性变化时处理
+        document.addEventListener("visibilitychange", function () {
+          if (
+            document.visibilityState === "visible" &&
+            isTimerRunning &&
+            !isPaused
+          ) {
+            // 页面可见时，更新previousTime以避免突然增长
+            previousTime = Date.now();
+          }
+        });
+      });
+
+      // 初始化所有事件处理器
+      function initEventHandlers() {
+        // 计算按钮点击事件处理
+        const calculateBtn = document.getElementById("calculateBtn");
+        if (calculateBtn) {
+          calculateBtn.addEventListener("click", function () {
+            if (!validateInputs()) return;
+
+            // 获取输入值
+            const startTime = document.getElementById("startTime").value;
+            const endTime = document.getElementById("endTime").value;
+            const monthlySalary = parseFloat(
+              document.getElementById("monthlySalary").value
+            );
+            const workdaysPerMonth = parseInt(
+              document.getElementById("workdaysPerMonth").value
+            );
+
+            // 计算每日工时
+            const startHour = parseInt(startTime.split(":")[0]);
+            const startMinute = parseInt(startTime.split(":")[1]);
+            const endHour = parseInt(endTime.split(":")[0]);
+            const endMinute = parseInt(endTime.split(":")[1]);
+
+            let workHoursPerDay =
+              endHour - startHour + (endMinute - startMinute) / 60;
+            if (workHoursPerDay <= 0) {
+              workHoursPerDay += 24;
+            }
+
+            // 计算时薪
+            hourlyIncome = monthlySalary / (workdaysPerMonth * workHoursPerDay);
+
+            // 计算日收入
+            const dailyIncome = hourlyIncome * workHoursPerDay;
+
+            // 更新附加信息
+            document.getElementById("additionalInfo").innerHTML =
+              `时薪约为 ¥${hourlyIncome.toFixed(2)}<br>` +
+              `平均每分钟赚取约 ¥${(hourlyIncome / 60).toFixed(2)}`;
+
+            // 更新工作时长和总收入
+            document.getElementById(
+              "hoursWorked"
+            ).innerText = `${workHoursPerDay.toFixed(2)}小时`;
+            document.getElementById(
+              "totalIncome"
+            ).innerText = `¥${dailyIncome.toFixed(2)}`;
+
+            // 初始化计时器
+            initTimer(startTime, endTime);
+            isTimerRunning = true;
+
+            // 创建金币雨效果
+            createMoneyRain();
+
+            // 显示结果区域
+            showResultSection();
+
+            // 保存输入到本地缓存
+            saveValuesToLocalStorage();
+          });
+        }
+
+        // 返回按钮点击事件处理
+        const backBtn = document.getElementById("backBtn");
+        if (backBtn) {
+          backBtn.addEventListener("click", function () {
+            showInputSection();
+
+            if (timerInterval) {
+              clearInterval(timerInterval);
+              timerInterval = null;
+            }
+
+            isPaused = false;
+            isTimerRunning = false;
+
+            document.title = "实时收入计算器";
+          });
+        }
+
+        // 隐私锁点击事件处理
+        const privacyToggle = document.getElementById("privacyToggle");
+        if (privacyToggle) {
+          privacyToggle.addEventListener("click", togglePrivacyMode);
+        }
+
+        // 确认设置密码按钮点击事件处理
+        const confirmPasswordBtn =
+          document.getElementById("confirmPasswordBtn");
+        if (confirmPasswordBtn) {
+          confirmPasswordBtn.addEventListener("click", setPassword);
+        }
+
+        // 取消设置密码按钮点击事件处理
+        const cancelPasswordBtn = document.getElementById("cancelPasswordBtn");
+        if (cancelPasswordBtn) {
+          cancelPasswordBtn.addEventListener("click", cancelSetPassword);
+        }
+
+        // 点击遮罩视图解锁数据
+        const maskedView = document.querySelector(".masked-view");
+        if (maskedView) {
+          maskedView.addEventListener("click", function () {
+            // 显示密码验证对话框
+            document.getElementById("unlockDialog").classList.add("active");
+          });
+        }
+
+        // 验证密码按钮点击事件处理
+        const verifyPasswordBtn = document.getElementById("verifyPasswordBtn");
+        if (verifyPasswordBtn) {
+          verifyPasswordBtn.addEventListener("click", verifyPassword);
+        }
+
+        // 取消验证密码按钮点击事件处理
+        const cancelUnlockBtn = document.getElementById("cancelUnlockBtn");
+        if (cancelUnlockBtn) {
+          cancelUnlockBtn.addEventListener("click", function () {
+            document.getElementById("unlockDialog").classList.remove("active");
+          });
+        }
+      }
+
+      // 初始化时间计算器
+      function initTimer(startTime, endTime) {
+        // 计算从设定开始时间到现在经过的秒数
+        const now = new Date();
+        const startHour = parseInt(startTime.split(":")[0]);
+        const startMinute = parseInt(startTime.split(":")[1]);
+
+        // 创建今天的开始工作时间
+        const todayStartTime = new Date(now);
+        todayStartTime.setHours(startHour, startMinute, 0, 0);
+
+        // 如果开始时间比现在晚，则认为是从昨天开始的
+        if (todayStartTime > now) {
+          todayStartTime.setDate(todayStartTime.getDate() - 1);
+        }
+
+        timerStartTime = todayStartTime;
+        previousTime = Date.now();
+
+        // 设置下班时间
+        const endHour = parseInt(endTime.split(":")[0]);
+        const endMinute = parseInt(endTime.split(":")[1]);
+
+        workEndTime = new Date(now);
+        workEndTime.setHours(endHour, endMinute, 0, 0);
+
+        // 如果下班时间比开始时间早，认为是第二天下班
+        if (workEndTime < todayStartTime) {
+          workEndTime.setDate(workEndTime.getDate() + 1);
+        }
+
+        // 检查是否已经过了下班时间
+        isWorkEnded = now > workEndTime;
+        if (isWorkEnded) {
+          document.getElementById("workEndNotice").classList.add("show");
+        }
+
+        // 显示会话开始时间
+        document.getElementById("sessionStart").innerText = `${String(
+          todayStartTime.getHours()
+        ).padStart(2, "0")}:${String(todayStartTime.getMinutes()).padStart(
+          2,
+          "0"
+        )}`;
+
+        // 初始化收入显示
+        updateTimeAndIncome();
+
+        // 启动定时更新
+        clearInterval(timerInterval);
+        timerInterval = setInterval(updateTimeAndIncome, 1000);
+      }
+
+      // 更新时间和收入的函数
+      function updateTimeAndIncome() {
+        const now = new Date();
+
+        // 检查是否已经到达下班时间
+        if (!isWorkEnded && now > workEndTime) {
+          isWorkEnded = true;
+          document.getElementById("workEndNotice").classList.add("show");
+          // 播放提示音效
+          playWorkEndSound();
+        }
+
+        if (isPaused) return;
+
+        let elapsedSeconds;
+
+        // 如果已经下班，计算从开始时间到下班时间的时长
+        if (isWorkEnded) {
+          elapsedSeconds = Math.floor((workEndTime - timerStartTime) / 1000);
+        } else {
+          elapsedSeconds = Math.floor((now - timerStartTime) / 1000);
+        }
+
+        // 更新工作时间显示
+        const hours = Math.floor(elapsedSeconds / 3600);
+        const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+        const seconds = elapsedSeconds % 60;
+
+        const formattedTime =
+          String(hours).padStart(2, "0") +
+          ":" +
+          String(minutes).padStart(2, "0") +
+          ":" +
+          String(seconds).padStart(2, "0");
+
+        document.getElementById("workingTime").innerText = formattedTime;
+
+        // 计算累计收入
+        const hourlyIncomeInSeconds = hourlyIncome / 3600;
+        const currentIncome = hourlyIncomeInSeconds * elapsedSeconds;
+        const formattedIncome = currentIncome.toFixed(2);
+
+        const oldIncome =
+          parseFloat(
+            document.getElementById("liveIncome").innerText.replace("¥", "")
+          ) || 0;
+        document.getElementById("liveIncome").innerText = formattedIncome;
+
+        // 更新页面标题
+        document.title = "¥" + formattedIncome + " - 实时收入";
+
+        // 创建收入增加动画 (只在未下班时创建)
+        if (!isWorkEnded) {
+          const currentTime = Date.now();
+          if (currentTime - previousTime > 5000) {
+            // 每5秒创建一次动画
+            const incomeChange =
+              ((currentTime - previousTime) / 1000) * hourlyIncomeInSeconds;
+            if (incomeChange > 0.01) {
+              createIncomeAnimation("+" + incomeChange.toFixed(2));
+            }
+            previousTime = currentTime;
+          }
+        }
+      }
+
+      // 播放下班提示音效
+      function playWorkEndSound() {
+        try {
+          // 创建音频对象
+          const audio = new Audio(
+            "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAFAAAGUACFhYWFhYWFhYWFhYWFhYWFhYWFvb29vb29vb29vb29vb29vb29vb3T09PT09PT09PT09PT09PT09PT0+np6enp6enp6enp6enp6enp6enp//////////////////////////8AAAAKTEFNRTMuMTAwBEgAAAAAAAAAABUgJAMGQQABmgAABlAiznawAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQxNIAUeIJjgEQSoAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+          );
+          audio.play();
+        } catch (error) {
+          console.log("无法播放提示音效");
+        }
+      }
+
+      // 重置计时器
+      function resetTimer() {
+        timerStartTime = new Date();
+        document.getElementById("sessionStart").innerText = `${String(
+          timerStartTime.getHours()
+        ).padStart(2, "0")}:${String(timerStartTime.getMinutes()).padStart(
+          2,
+          "0"
+        )}`;
+        document.getElementById("liveIncome").innerText = "¥0.00";
+        document.getElementById("workingTime").innerText = "00:00:00";
+        isPaused = false;
+
+        // 创建新的金币雨效果
+        createMoneyRain();
+
+        // 更新previousTime
+        previousTime = Date.now();
+      }
+
+      // 创建收入动画
+      function createIncomeAnimation(text) {
+        const liveCounter = document.querySelector(".live-counter-value");
+        const animation = document.createElement("div");
+        animation.className = "score-animation";
+        animation.innerText = text;
+
+        liveCounter.appendChild(animation);
+
+        // 动画结束后移除元素
+        animation.addEventListener("animationend", () => {
+          animation.remove();
+        });
+      }
+
+      // 创建金币雨效果
+      function createMoneyRain() {
+        const moneyRain = document.querySelector(".money-rain");
+        moneyRain.innerHTML = ""; // 清空之前的金币
+        moneyRain.classList.add("active");
+
+        const numCoins = 50;
+        const container = document
+          .querySelector(".container")
+          .getBoundingClientRect();
+        const containerWidth = container.width;
+
+        for (let i = 0; i < numCoins; i++) {
+          setTimeout(() => {
+            const coin = document.createElement("div");
+            coin.className = "coin";
+
+            // 根据容器宽度来随机位置
+            const randomX = container.left + Math.random() * containerWidth;
+            const randomSize = Math.random() * 10 + 16;
+            const randomDelay = Math.random() * 2;
+            const randomDuration = Math.random() * 2 + 2;
+
+            coin.style.left = `${randomX}px`;
+            coin.style.width = `${randomSize}px`;
+            coin.style.height = `${randomSize}px`;
+            coin.style.animationDelay = `${randomDelay}s`;
+            coin.style.animationDuration = `${randomDuration}s`;
+
+            moneyRain.appendChild(coin);
+
+            // 动画结束后移除硬币
+            setTimeout(() => {
+              coin.remove();
+            }, randomDuration * 1000 + randomDelay * 1000);
+          }, i * 100); // 每隔100ms创建一个硬币
+        }
+
+        // 5秒后停止金币雨
+        setTimeout(() => {
+          moneyRain.classList.remove("active");
+        }, 7000);
+      }
+
+      // 显示结果部分
+      function showResultSection() {
+        const inputSection = document.querySelector(".input-section");
+        const resultSection = document.querySelector(".result-section");
+
+        inputSection.classList.add("hide");
+        setTimeout(() => {
+          resultSection.classList.add("show");
+        }, 500);
+      }
+
+      // 显示输入部分
+      function showInputSection() {
+        const resultSection = document.querySelector(".result-section");
+        const inputSection = document.querySelector(".input-section");
+
+        resultSection.classList.remove("show");
+        setTimeout(() => {
+          inputSection.classList.remove("hide");
+        }, 500);
+      }
+
+      // 创建背景粒子效果
+      function createParticles() {
+        const container = document.querySelector(".container");
+        const particleContainer = document.createElement("div");
+        particleContainer.className = "particle-container";
+        particleContainer.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -2;
+                overflow: hidden;
+                pointer-events: none;
+            `;
+        document.body.appendChild(particleContainer);
+
+        const particleCount = 40;
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement("div");
+          const size = Math.random() * 8 + 1;
+          const duration = Math.random() * 20 + 10;
+          const opacity = Math.random() * 0.5 + 0.1;
+
+          particle.style.cssText = `
+                    position: absolute;
+                    background: rgba(255, 255, 255, ${opacity});
+                    width: ${size}px;
+                    height: ${size}px;
+                    border-radius: 50%;
+                    top: ${Math.random() * 100}%;
+                    left: ${Math.random() * 100}%;
+                    animation: float ${duration}s linear infinite;
+                    animation-delay: -${Math.random() * 20}s;
+                    z-index: -1;
+                `;
+
+          const keyframes = `
+                    @keyframes float {
+                        0% {
+                            transform: translate(0, 0) rotate(0deg);
+                        }
+                        25% {
+                            transform: translate(${
+                              Math.random() * 200 - 100
+                            }px, ${Math.random() * 200 - 100}px) rotate(90deg);
+                        }
+                        50% {
+                            transform: translate(${
+                              Math.random() * 200 - 100
+                            }px, ${Math.random() * 200 - 100}px) rotate(180deg);
+                        }
+                        75% {
+                            transform: translate(${
+                              Math.random() * 200 - 100
+                            }px, ${Math.random() * 200 - 100}px) rotate(270deg);
+                        }
+                        100% {
+                            transform: translate(0, 0) rotate(360deg);
+                        }
+                    }
+                `;
+
+          const style = document.createElement("style");
+          style.appendChild(document.createTextNode(keyframes));
+          document.head.appendChild(style);
+
+          particleContainer.appendChild(particle);
+        }
+      }
+
+      // 添加发光动画效果
+      function animateGlowElements() {
+        const title = document.querySelector("h1");
+        const buttons = document.querySelectorAll("button");
+
+        title.classList.add("glow-effect");
+        buttons.forEach((button) => {
+          button.classList.add("glow-effect");
+        });
+      }
+
+      // 验证输入值是否有效
+      function validateInputs() {
+        // 重置错误提示
+        const errors = document.querySelectorAll(".error");
+        errors.forEach((error) => error.classList.remove("show"));
+        let inputsValid = true;
+
+        // 验证开始时间
+        const startTime = document.getElementById("startTime").value;
+        if (!startTime) {
+          document.getElementById("startTimeError").classList.add("show");
+          inputsValid = false;
+        }
+
+        // 验证结束时间
+        const endTime = document.getElementById("endTime").value;
+        if (!endTime) {
+          document.getElementById("endTimeError").classList.add("show");
+          inputsValid = false;
+        }
+
+        // 验证月薪
+        const monthlySalary = document.getElementById("monthlySalary").value;
+        if (
+          !monthlySalary ||
+          isNaN(monthlySalary) ||
+          parseFloat(monthlySalary) <= 0
+        ) {
+          document.getElementById("monthlySalaryError").classList.add("show");
+          inputsValid = false;
+        }
+
+        // 验证每月工作天数
+        const workdaysPerMonth =
+          document.getElementById("workdaysPerMonth").value;
+        if (
+          !workdaysPerMonth ||
+          isNaN(workdaysPerMonth) ||
+          parseInt(workdaysPerMonth) <= 0
+        ) {
+          document.getElementById("workdaysError").classList.add("show");
+          inputsValid = false;
+        }
+
+        return inputsValid;
+      }
+
+      // 保存值到本地存储
+      function saveValuesToLocalStorage() {
+        const startTime = document.getElementById("startTime").value;
+        const endTime = document.getElementById("endTime").value;
+        const monthlySalary = document.getElementById("monthlySalary").value;
+        const workdaysPerMonth =
+          document.getElementById("workdaysPerMonth").value;
+        const password = document.getElementById("passwordInput").value;
+
+        localStorage.setItem("startTime", startTime);
+        localStorage.setItem("endTime", endTime);
+        localStorage.setItem("monthlySalary", monthlySalary);
+        localStorage.setItem("workdaysPerMonth", workdaysPerMonth);
+
+        if (password && password.trim() !== "") {
+          localStorage.setItem("hasPassword", "true");
+          localStorage.setItem("password", password);
+        }
+      }
+
+      // 从本地存储加载值
+      function loadValuesFromLocalStorage() {
+        const startTime = localStorage.getItem("startTime");
+        const endTime = localStorage.getItem("endTime");
+        const monthlySalary = localStorage.getItem("monthlySalary");
+        const workdaysPerMonth = localStorage.getItem("workdaysPerMonth");
+        const hasPassword = localStorage.getItem("hasPassword");
+        const password = localStorage.getItem("password");
+
+        if (startTime) document.getElementById("startTime").value = startTime;
+        if (endTime) document.getElementById("endTime").value = endTime;
+        if (monthlySalary)
+          document.getElementById("monthlySalary").value = monthlySalary;
+        if (workdaysPerMonth)
+          document.getElementById("workdaysPerMonth").value = workdaysPerMonth;
+
+        if (hasPassword === "true" && password) {
+          passwordIsSet = true;
+        }
+      }
+
+      // 启用隐私模式
+      function togglePrivacyMode() {
+        const liveCounter = document.querySelector(".live-counter");
+
+        // 如果没有设置密码，显示密码对话框让用户设置密码
+        if (!passwordIsSet) {
+          const passwordDialog = document.getElementById("passwordDialog");
+          passwordDialog.classList.add("active");
+          return;
+        }
+
+        // 如果当前是未锁定状态，直接锁定
+        if (!liveCounter.classList.contains("private")) {
+          liveCounter.classList.add("private");
+        }
+        // 如果当前是锁定状态，需要验证密码才能解锁
+        else {
+          // 显示密码验证对话框
+          document.getElementById("unlockDialog").classList.add("active");
+        }
+      }
+
+      // 设置密码
+      function setPassword() {
+        const passwordInput = document.getElementById("passwordInput");
+        const password = passwordInput.value;
+
+        if (password && password.trim() !== "") {
+          passwordIsSet = true;
+          document.getElementById("passwordDialog").classList.remove("active");
+
+          // 激活隐私模式
+          document.querySelector(".live-counter").classList.add("private");
+
+          // 保存密码
+          localStorage.setItem("hasPassword", "true");
+          localStorage.setItem("password", password);
+        }
+      }
+
+      // 取消设置密码
+      function cancelSetPassword() {
+        document.getElementById("passwordDialog").classList.remove("active");
+      }
+
+      // 验证密码
+      function verifyPassword() {
+        const storedPassword = localStorage.getItem("password");
+        const inputPassword = document.getElementById(
+          "unlockPasswordInput"
+        ).value;
+
+        if (inputPassword === storedPassword) {
+          document.querySelector(".live-counter").classList.remove("private");
+          document.getElementById("unlockDialog").classList.remove("active");
+        } else {
+          // 显示错误信息
+          document.getElementById("wrongPasswordError").style.display = "block";
+          setTimeout(() => {
+            document.getElementById("wrongPasswordError").style.display =
+              "none";
+          }, 3000);
+        }
+      }
+    </script>
+  </body>
+</html>
